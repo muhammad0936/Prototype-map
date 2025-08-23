@@ -1,470 +1,866 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>نموذج خريطة مع OSRM</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-  <style>
-  /* Base theme variables (light by default) */
-  :root {
-    --bg: #ffffff;
-    --bg-elev: #f2f3f5;
-    --text: #0f1419; /* X-like primary text */
-    --text-muted: #536471; /* X muted */
-    --border: #e1e8ed;
-    --accent: #1d9bf0; /* X blue */
-    --accent-weak: rgba(29, 155, 240, 0.1);
-    --btn-bg: #eff3f4;
-    --btn-text: #0f1419;
-  }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>نموذج خريطة مع OSRM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+      /* Base theme variables (light by default) */
+      :root {
+        --bg: #ffffff;
+        --bg-elev: #f2f3f5;
+        --text: #0f1419; /* X-like primary text */
+        --text-muted: #536471; /* X muted */
+        --border: #e1e8ed;
+        --accent: #1d9bf0; /* X blue */
+        --accent-weak: rgba(29, 155, 240, 0.1);
+        --btn-bg: #eff3f4;
+        --btn-text: #0f1419;
+        --route-blue: #0074d9;
+        --route-green: #2ecc40;
+        --route-red: #ff4136;
+      }
 
-  :root.dark {
-    --bg: #000000;
-    --bg-elev: #16181c;
-    --text: #e7e9ea;
-    --text-muted: #8b98a5;
-    --border: #2f3336;
-    --accent: #1d9bf0;
-    --accent-weak: rgba(29, 155, 240, 0.15);
-    --btn-bg: #1d1f23;
-    --btn-text: #e7e9ea;
-  }
+      :root.dark {
+        --bg: #000000;
+        --bg-elev: #16181c;
+        --text: #e7e9ea;
+        --text-muted: #8b98a5;
+        --border: #2f3336;
+        --accent: #1d9bf0;
+        --accent-weak: rgba(29, 155, 240, 0.15);
+        --btn-bg: #1d1f23;
+        --btn-text: #e7e9ea;
+        --route-blue: #0074d9;
+        --route-green: #2ecc40;
+        --route-red: #ff4136;
+      }
 
-  html, body {
-    margin: 0;
-    height: 100%;
-    font-family: 'Tajawal', Arial, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-  }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font-family: 'Tajawal', Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
 
-  #map {
-    height: 100%;
-    width: calc(100% - 192px);
-    float: left; /* map on left in RTL layout */
-  }
+      #map {
+        height: calc(100% - 60px); /* Account for bottom bar */
+        width: calc(100% - 192px);
+        float: left; /* map on left in RTL layout */
+      }
 
-  #sidebar {
-    width: 192px;
-    height: 100%;
-    float: right;
-    background: var(--bg);
-    border-left: 1px solid var(--border);
-    padding: 12px;
-    box-sizing: border-box;
-    overflow-y: auto;
-    position: relative;
-  }
+      #sidebar {
+        width: 192px;
+        height: 100%;
+        float: right;
+        background: var(--bg);
+        border-left: 1px solid var(--border);
+        padding: 12px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        position: relative;
+      }
 
-  #sidebar .close-btn { display: none; }
+      #sidebar .close-btn {
+        display: none;
+      }
 
-  @media (max-width: 1024px) {
-    #sidebar .close-btn { display: inline-flex; }
-  }
+      @media (max-width: 1024px) {
+        #sidebar {
+          display: none;
+        } /* Hide sidebar on mobile */
+      }
 
-  .sidebar-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-  }
+      .sidebar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+      }
 
-  .icon-btn {
-    background: var(--btn-bg);
-    color: var(--btn-text);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    width: 36px;
-    height: 36px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 16px;
-  }
+      .icon-btn {
+        background: var(--btn-bg);
+        color: var(--btn-text);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 16px;
+      }
 
-  .icon-btn:hover { background: var(--accent-weak); border-color: var(--accent); }
+      .icon-btn:hover {
+        background: var(--accent-weak);
+        border-color: var(--accent);
+      }
 
-  .toolbar {
-    display: flex;
-    flex-direction: column; /* stack actions as column */
-    gap: 8px;
-    margin-bottom: 10px;
-  }
+      .toolbar {
+        display: flex;
+        flex-direction: column; /* stack actions as column */
+        gap: 8px;
+        margin-bottom: 10px;
+      }
 
-  button {
-    background: var(--btn-bg);
-    color: var(--btn-text);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 14px;
-    font-size: 14px;
-    cursor: pointer;
-  }
+      button {
+        background: var(--btn-bg);
+        color: var(--btn-text);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
 
-  button:hover { background: var(--accent-weak); border-color: var(--accent); }
+      button:hover {
+        background: var(--accent-weak);
+        border-color: var(--accent);
+      }
 
-  .route {
-    margin-bottom: 10px;
-    padding: 8px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--bg-elev);
-  }
+      .route {
+        margin-bottom: 10px;
+        padding: 8px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--bg-elev);
+      }
 
-  /* route color hints */
-  .route:nth-child(1) { box-shadow: inset 0 0 0 1px rgba(0,0,255,0.1); }
-  .route:nth-child(2) { box-shadow: inset 0 0 0 1px rgba(0,128,0,0.1); }
-  .route:nth-child(3) { box-shadow: inset 0 0 0 1px rgba(255,0,0,0.1); }
+      /* route color hints */
+      .route:nth-child(1) {
+        background-color: var(--route-blue);
+      }
+      .route:nth-child(2) {
+        background-color: var(--route-green);
+      }
+      .route:nth-child(3) {
+        background-color: var(--route-red);
+      }
 
-  /* Leaflet tweaks to match theme */
-  .leaflet-control-attribution {
-    background: rgba(0,0,0,0.4);
-    color: #fff;
-    border-radius: 6px;
-    padding: 2px 6px;
-  }
+      /* Leaflet tweaks to match theme */
+      .leaflet-control-attribution {
+        background: rgba(0, 0, 0, 0.4);
+        color: #fff;
+        border-radius: 6px;
+        padding: 2px 6px;
+      }
 
-  /* Remove floating button class (no longer used) */
-  .floating { display: none !important; }
+      /* Remove floating button class (no longer used) */
+      .floating {
+        display: none !important;
+      }
 
-  /* Route overlay for small screens (top-right) */
-  .route-overlay {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    left: auto;
-    max-width: 70vw;
-    width: 320px;
-    background: var(--bg-elev);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-    padding: 10px;
-    z-index: 1600;
-    display: none;
-  }
-  .route-overlay .route {
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    padding: 6px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .route-overlay .route:last-child { border-bottom: none; }
+      /* Classic location button for large screens */
+      .classic-location-btn {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-size: 14px;
+        cursor: pointer;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
 
-  /* Responsive */
-  @media (max-width: 1024px) {
-    #map { width: 100%; float: none; }
-    #sidebar {
-      width: 48%;
-      max-width: 216px;
-      position: fixed;
-      top: 0;
-      right: 0; /* slides from right in RTL */
-      height: 100%;
-      transform: translateX(100%); /* hidden by default */
-      transition: transform 0.25s ease;
-      box-shadow: -8px 0 24px rgba(0,0,0,0.15);
-      z-index: 1500; /* ensure above map */
-    }
-    #sidebar.show { transform: translateX(0); }
-    .route-overlay.visible { display: block; }
-  }
+      .classic-location-btn:hover {
+        background: var(--accent-weak);
+        border-color: var(--accent);
+      }
 
-  @media (min-width: 1025px) {
-    #map { width: calc(100% - 192px); float: left; }
-    #sidebar {
-      position: static;
-      width: 192px;
-      height: 100%;
-      transform: none; /* always visible */
-      box-shadow: none;
-      z-index: auto;
-    }
-  }
-  </style>
-</head>
-<body>
-  <div id="sidebar">
-    <div class="sidebar-header">
-      <button id="theme-toggle-btn" class="icon-btn" type="button" aria-label="تبديل السمة">☾</button>
-      <button id="sidebar-close-btn" class="icon-btn close-btn" type="button" aria-label="إغلاق">✕</button>
-    </div>
-    <h2>تفاصيل المسار</h2>
-    <div class="toolbar">
-      <button id="clear-btn" type="button">مسح الاختيار</button>
-      <button id="basemap-toggle-btn" type="button">عرض فضائي</button>
-    </div>
-    <div id="route-info">اختر نقطتين على الخريطة لعرض المسارات.</div>
-  </div>
-  <div id="map"></div>
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-  const map = L.map('map').setView([24.7136, 46.6753], 12); // Riyadh center
+      /* Bottom bar for mobile devices */
+      #bottom-bar {
+        display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--bg);
+        border-top: 1px solid var(--border);
+        z-index: 1000;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+      }
 
-  // Base layers: street and satellite
-  const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
-  }).addTo(map);
+      #bottom-bar .actions {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        padding: 10px;
+      }
 
-  const satelliteLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-    subdomains: ['mt0','mt1','mt2','mt3'],
-    attribution: '© Google',
-    maxZoom: 20
-  });
+      #bottom-bar .actions button {
+        flex: 1;
+        margin: 0 5px;
+        padding: 8px 12px;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 12px;
+      }
 
-  let isSatellite = false;
+      #bottom-bar .route-info {
+        padding: 10px;
+        border-top: 1px solid var(--border);
+        max-height: 120px;
+        overflow-y: auto;
+      }
 
-  let points = [];
-  let routeLayers = [];
-  let markers = [];
+      #bottom-bar .route {
+        margin-bottom: 8px;
+        padding: 6px;
+        font-size: 12px;
+      }
 
-  map.on('click', (e) => {
-    if (points.length === 0) {
-      const marker = L.marker(e.latlng).addTo(map)
-        .bindPopup("بداية").openPopup();
-      markers.push(marker);
-      points.push(e.latlng);
-      return;
-    }
+      /* Responsive */
+      @media (max-width: 1024px) {
+        #map {
+          width: 100%;
+          float: none;
+          height: calc(100% - 60px); /* Account for bottom bar */
+        }
 
-    if (points.length === 1) {
-      const marker = L.marker(e.latlng).addTo(map)
-        .bindPopup("نهاية").openPopup();
-      markers.push(marker);
-      points.push(e.latlng);
-      getRoutes(points[0], points[1]);
-      return;
-    }
+        #sidebar {
+          display: none; /* Hide sidebar on mobile */
+        }
 
-    // If already have start and end: replace only the end point
-    if (points.length === 2) {
-      // Remove existing end marker
-      const endMarker = markers.pop();
-      if (endMarker) map.removeLayer(endMarker);
+        #bottom-bar {
+          display: block;
+        }
 
-      // Add new end marker and update points[1]
-      const newEndMarker = L.marker(e.latlng).addTo(map)
-        .bindPopup("نهاية").openPopup();
-      markers.push(newEndMarker);
-      points[1] = e.latlng;
-
-      // Clear previous routes and fetch again
-      routeLayers.forEach(layer => map.removeLayer(layer));
-      routeLayers = [];
-      getRoutes(points[0], points[1]);
-    }
-  });
-
-  async function getRoutes(start, end) {
-    // Remove old routes
-    routeLayers.forEach(layer => map.removeLayer(layer));
-    routeLayers = [];
-
-    const baseUrl = "https://router.project-osrm.org/route/v1/driving/";
-    const coords = `${start.lng},${start.lat};${end.lng},${end.lat}`;
-    const params = "?overview=full&geometries=geojson&alternatives=3";
-
-    try {
-      // Try multiple strategies to obtain up to three distinct routes
-      const requests = [
-        fetch(baseUrl + coords + params),
-        fetch(baseUrl + coords + params + "&exclude=motorway")
-      ];
-
-      const responses = await Promise.allSettled(requests);
-
-      let allRoutes = [];
-      for (const result of responses) {
-        if (result.status === 'fulfilled') {
-          const res = result.value;
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data.routes)) {
-              allRoutes = allRoutes.concat(data.routes);
-            }
-          }
+        .classic-location-btn {
+          display: none; /* Hide classic button on mobile */
         }
       }
 
-      const uniqueSortedRoutes = dedupeAndSortRoutes(allRoutes).slice(0, 3);
+      @media (min-width: 1025px) {
+        #map {
+          width: calc(100% - 192px);
+          float: left;
+          height: 100%;
+        }
+        #sidebar {
+          position: static;
+          width: 192px;
+          height: 100%;
+          transform: none; /* always visible */
+          box-shadow: none;
+          z-index: auto;
+          display: block;
+        }
 
-      if (uniqueSortedRoutes.length === 0) {
-        throw new Error("لم يتم العثور على مسارات");
+        #bottom-bar {
+          display: none !important;
+        }
+
+        .classic-location-btn {
+          display: flex; /* Show classic button on desktop */
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sidebar">
+      <div class="sidebar-header">
+        <button
+          id="theme-toggle-btn"
+          class="icon-btn"
+          type="button"
+          aria-label="تبديل السمة"
+        >
+          <span>
+            <svg
+              fill="#aaa"
+              width="20px"
+              height="20px"
+              viewBox="-7.5 0 32 32"
+              version="1.1"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <title>dark</title>
+              <path
+                d="M9.75 8.25v0.219c0 0.844-0.375 1.25-1.156 1.25s-1.125-0.406-1.125-1.25v-0.219c0-0.813 0.344-1.219 1.125-1.219s1.156 0.406 1.156 1.219zM12.063 9.25l0.156-0.188c0.469-0.688 1.031-0.781 1.625-0.344 0.625 0.438 0.719 1.031 0.25 1.719l-0.188 0.156c-0.469 0.688-1.031 0.781-1.625 0.313-0.625-0.438-0.688-0.969-0.219-1.656zM5 9.063l0.125 0.188c0.469 0.688 0.406 1.219-0.188 1.656-0.625 0.469-1.219 0.375-1.688-0.313l-0.125-0.156c-0.469-0.688-0.406-1.281 0.188-1.719 0.625-0.438 1.219-0.281 1.688 0.344zM8.594 11.125c2.656 0 4.844 2.188 4.844 4.875 0 2.656-2.188 4.813-4.844 4.813-2.688 0-4.844-2.156-4.844-4.813 0-2.688 2.156-4.875 4.844-4.875zM1.594 12.5l0.219 0.063c0.813 0.25 1.063 0.719 0.844 1.469-0.25 0.75-0.75 0.969-1.531 0.719l-0.219-0.063c-0.781-0.25-1.063-0.719-0.844-1.469 0.25-0.75 0.75-0.969 1.531-0.719zM15.375 12.563l0.219-0.063c0.813-0.25 1.313-0.031 1.531 0.719s-0.031 1.219-0.844 1.469l-0.188 0.063c-0.813 0.25-1.313 0.031-1.531-0.719-0.25-0.75 0.031-1.219 0.813-1.469zM8.594 18.688c1.469 0 2.688-1.219 2.688-2.688 0-1.5-1.219-2.719-2.688-2.719-1.5 0-2.719 1.219-2.719 2.719 0 1.469 1.219 2.688 2.719 2.688zM0.906 17.281l0.219-0.063c0.781-0.25 1.281-0.063 1.531 0.688 0.219 0.75-0.031 1.219-0.844 1.469l-0.219 0.063c-0.781 0.25-1.281 0.063-1.531-0.688-0.219-0.75 0.063-1.219 0.844-1.469zM16.094 17.219l0.188 0.063c0.813 0.25 1.063 0.719 0.844 1.469s-0.719 0.938-1.531 0.688l-0.219-0.063c-0.781-0.25-1.063-0.719-0.813-1.469 0.219-0.75 0.719-0.938 1.531-0.688zM3.125 21.563l0.125-0.188c0.469-0.688 1.063-0.75 1.688-0.313 0.594 0.438 0.656 0.969 0.188 1.656l-0.125 0.188c-0.469 0.688-1.063 0.75-1.688 0.313-0.594-0.438-0.656-0.969-0.188-1.656zM13.906 21.375l0.188 0.188c0.469 0.688 0.375 1.219-0.25 1.656-0.594 0.438-1.156 0.375-1.625-0.313l-0.156-0.188c-0.469-0.688-0.406-1.219 0.219-1.656 0.594-0.438 1.156-0.375 1.625 0.313zM9.75 23.469v0.25c0 0.844-0.375 1.25-1.156 1.25s-1.125-0.406-1.125-1.25v-0.25c0-0.844 0.344-1.25 1.125-1.25s1.156 0.406 1.156 1.25z"
+              ></path></svg
+          ></span>
+        </button>
+      </div>
+      <h2>تفاصيل المسار</h2>
+      <div class="toolbar">
+        <button id="clear-btn" type="button">
+          <svg
+            fill="#aaa"
+            width="20px"
+            height="20px"
+            viewBox="0 0 512 512"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M213.333333,3.55271368e-14 C269.912851,3.55271368e-14 324.175019,22.4761259 364.18278,62.4838867 C404.190541,102.491647 426.666667,156.753816 426.666667,213.333333 C426.666667,331.15408 331.15408,426.666667 213.333333,426.666667 C95.5125867,426.666667 3.55271368e-14,331.15408 3.55271368e-14,213.333333 C3.55271368e-14,95.5125867 95.5125867,3.55271368e-14 213.333333,3.55271368e-14 Z M213.333333,42.6666667 C119.076736,42.6666667 42.6666667,119.076736 42.6666667,213.333333 C42.6666667,307.589931 119.076736,384 213.333333,384 C307.589931,384 384,307.589931 384,213.333333 C384,119.076736 307.589931,42.6666667 213.333333,42.6666667 Z M288.758057,107.738721 L318.927946,137.90861 L243.502,213.333 L318.927946,288.758057 L288.758057,318.927946 L213.333,243.502 L137.90861,318.927946 L107.738721,288.758057 L183.163,213.333 L107.738721,137.90861 L137.90861,107.738721 L213.333,183.163 L288.758057,107.738721 Z"
+              transform="translate(42.667 42.667)"
+            />
+          </svg>
+          مسح الاختيار
+        </button>
+        <button id="basemap-toggle-btn" type="button">
+          <svg
+            width="20px"
+            height="20px"
+            viewBox="0 0 512 512"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              fill="#aaa"
+              d="M314.125 45.125l-36.28 10.97 26.717 38.874L340.844 84l-26.72-38.875zM260.47 61.313l-43 13 26.686 38.874 41.625-12.562-26.467-38.5 1.156-.813zm91.467 38.874l-36.28 10.938 27.374 39.813L379.314 140l-27.375-39.813zM120.47 107.78l-36.282 10.94 26.718 38.905 36.28-10.97-26.717-38.874zm176.405 9.032l-41.594 12.563 12.814 18.656c13.59 1.764 26.138 6.878 36.844 14.44l19.312-5.845-27.375-39.813zm-230.03 7.157l-43 12.968 26.718 38.906 41.562-12.563-26.47-38.5 1.19-.81zm323.56 32.155l-36.28 10.97 25.97 37.81 36.28-10.936-25.97-37.845zm-232.092 6.72L122 173.78l27.375 39.814 36.28-10.938-27.343-39.812zm99.125 3.186c-22.736 0-42.626 11.753-53.97 29.532l66.782 97.188c6.682-1.346 12.98-3.725 18.72-6.97l7.874 11.69 15.78-10.033-8.874-13.187c10.95-11.475 17.656-27.028 17.656-44.22 0-35.446-28.52-64-63.97-64zm77.906 6.75l-14.438 4.345c9.396 11.262 15.84 25.07 18.188 40.188l22.22-6.72-25.97-37.812zm-232.125 6.69L61.655 192l27.313 39.813 41.593-12.563-27.344-39.78zm324.28 30.655l-36.28 10.97 27.342 39.81 36.313-10.967-27.375-39.813zm-230.72 8.688l-36.31 10.968 25.968 37.782 36.312-10.968-25.97-37.78zm175.657 7.937l-32.625 9.875c-.35 4.407-1.012 8.72-2.03 12.906l20.312 29.595 41.687-12.563-27.342-39.812zm-230.75 8.688L100.094 248l25.97 37.813 41.592-12.594-25.97-37.783zm324.282 30.656l-36.314 10.97 26 37.81 36.313-10.937-26-37.843zm-232.095 6.687l-36.313 10.97 27.344 39.78 36.313-10.967-27.345-39.782zm177.03 9.94L369.22 295.31l25.967 37.813 41.688-12.563-25.97-37.843zm-232.124 6.686l-41.624 12.563 27.313 39.81 41.655-12.592-27.344-39.782zm152.314 8.47L301.78 316.5l37.314 58.656 29.312-18.625-37.312-58.655zm-58.75 30.874l-36.313 10.97 26 37.81 36.314-10.936-26-37.844zm-55.094 16.625l-41.656 12.594 25.97 37.81 41.655-12.56-25.97-37.845zm178.313 20.875c-36.29.507-64.44 29.054-70.375 64.844L368.5 404l9.72 14.406c-1.222 2.47-1.908 5.245-1.908 8.188 0 10.222 8.278 18.53 18.5 18.53 10.223 0 18.5-8.308 18.5-18.53 0-10.223-8.277-18.5-18.5-18.5-.335 0-.67.045-1 .062l-9.437-14.062 37.438-23.438c-9.068-3.125-17.876-4.523-26.25-4.406z"
+            />
+          </svg>
+          عرض فضائي
+        </button>
+        <button id="location-btn" type="button">
+          <svg
+            width="20px"
+            height="20px"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M12 21C15.5 17.4 19 14.1764 19 10.2C19 6.22355 15.866 3 12 3C8.13401 3 5 6.22355 5 10.2C5 14.1764 8.5 17.4 12 21Z"
+              stroke="#777777"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M12 13C13.6569 13 15 11.6569 15 10C15 8.34315 13.6569 7 12 7C10.3431 7 9 8.34315 9 10C9 11.6569 10.3431 13 12 13Z"
+              stroke="#777777"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          موقعي الحالي
+        </button>
+      </div>
+      <div id="route-info">اختر نقطتين على الخريطة لعرض المسارات.</div>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Bottom bar for mobile devices -->
+    <div id="bottom-bar">
+      <div class="actions">
+        <button id="mobile-location-btn" type="button">
+          <span>
+            <svg
+              width="20px"
+              height="20px"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 21C15.5 17.4 19 14.1764 19 10.2C19 6.22355 15.866 3 12 3C8.13401 3 5 6.22355 5 10.2C5 14.1764 8.5 17.4 12 21Z"
+                stroke="#777777"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M12 13C13.6569 13 15 11.6569 15 10C15 8.34315 13.6569 7 12 7C10.3431 7 9 8.34315 9 10C9 11.6569 10.3431 13 12 13Z"
+                stroke="#777777"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /></svg
+          ></span>
+          <span>موقعي</span>
+        </button>
+        <button id="mobile-clear-btn" type="button">
+          <span>
+            <svg
+              fill="#aaa"
+              width="20px"
+              height="20px"
+              viewBox="0 0 512 512"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M213.333333,3.55271368e-14 C269.912851,3.55271368e-14 324.175019,22.4761259 364.18278,62.4838867 C404.190541,102.491647 426.666667,156.753816 426.666667,213.333333 C426.666667,331.15408 331.15408,426.666667 213.333333,426.666667 C95.5125867,426.666667 3.55271368e-14,331.15408 3.55271368e-14,213.333333 C3.55271368e-14,95.5125867 95.5125867,3.55271368e-14 213.333333,3.55271368e-14 Z M213.333333,42.6666667 C119.076736,42.6666667 42.6666667,119.076736 42.6666667,213.333333 C42.6666667,307.589931 119.076736,384 213.333333,384 C307.589931,384 384,307.589931 384,213.333333 C384,119.076736 307.589931,42.6666667 213.333333,42.6666667 Z M288.758057,107.738721 L318.927946,137.90861 L243.502,213.333 L318.927946,288.758057 L288.758057,318.927946 L213.333,243.502 L137.90861,318.927946 L107.738721,288.758057 L183.163,213.333 L107.738721,137.90861 L137.90861,107.738721 L213.333,183.163 L288.758057,107.738721 Z"
+                transform="translate(42.667 42.667)"
+              /></svg
+          ></span>
+          <span>مسح</span>
+        </button>
+        <button id="mobile-basemap-btn" type="button">
+          <span>
+            <svg
+              width="20px"
+              height="20px"
+              viewBox="0 0 512 512"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fill="#aaa"
+                d="M314.125 45.125l-36.28 10.97 26.717 38.874L340.844 84l-26.72-38.875zM260.47 61.313l-43 13 26.686 38.874 41.625-12.562-26.467-38.5 1.156-.813zm91.467 38.874l-36.28 10.938 27.374 39.813L379.314 140l-27.375-39.813zM120.47 107.78l-36.282 10.94 26.718 38.905 36.28-10.97-26.717-38.874zm176.405 9.032l-41.594 12.563 12.814 18.656c13.59 1.764 26.138 6.878 36.844 14.44l19.312-5.845-27.375-39.813zm-230.03 7.157l-43 12.968 26.718 38.906 41.562-12.563-26.47-38.5 1.19-.81zm323.56 32.155l-36.28 10.97 25.97 37.81 36.28-10.936-25.97-37.845zm-232.092 6.72L122 173.78l27.375 39.814 36.28-10.938-27.343-39.812zm99.125 3.186c-22.736 0-42.626 11.753-53.97 29.532l66.782 97.188c6.682-1.346 12.98-3.725 18.72-6.97l7.874 11.69 15.78-10.033-8.874-13.187c10.95-11.475 17.656-27.028 17.656-44.22 0-35.446-28.52-64-63.97-64zm77.906 6.75l-14.438 4.345c9.396 11.262 15.84 25.07 18.188 40.188l22.22-6.72-25.97-37.812zm-232.125 6.69L61.655 192l27.313 39.813 41.593-12.563-27.344-39.78zm324.28 30.655l-36.28 10.97 27.342 39.81 36.313-10.967-27.375-39.813zm-230.72 8.688l-36.31 10.968 25.968 37.782 36.312-10.968-25.97-37.78zm175.657 7.937l-32.625 9.875c-.35 4.407-1.012 8.72-2.03 12.906l20.312 29.595 41.687-12.563-27.342-39.812zm-230.75 8.688L100.094 248l25.97 37.813 41.592-12.594-25.97-37.783zm324.282 30.656l-36.314 10.97 26 37.81 36.313-10.937-26-37.843zm-232.095 6.687l-36.313 10.97 27.344 39.78 36.313-10.967-27.345-39.782zm177.03 9.94L369.22 295.31l25.967 37.813 41.688-12.563-25.97-37.843zm-232.124 6.686l-41.624 12.563 27.313 39.81 41.655-12.592-27.344-39.782zm152.314 8.47L301.78 316.5l37.314 58.656 29.312-18.625-37.312-58.655zm-58.75 30.874l-36.313 10.97 26 37.81 36.314-10.936-26-37.844zm-55.094 16.625l-41.656 12.594 25.97 37.81 41.655-12.56-25.97-37.845zm178.313 20.875c-36.29.507-64.44 29.054-70.375 64.844L368.5 404l9.72 14.406c-1.222 2.47-1.908 5.245-1.908 8.188 0 10.222 8.278 18.53 18.5 18.53 10.223 0 18.5-8.308 18.5-18.53 0-10.223-8.277-18.5-18.5-18.5-.335 0-.67.045-1 .062l-9.437-14.062 37.438-23.438c-9.068-3.125-17.876-4.523-26.25-4.406z"
+              /></svg
+          ></span>
+          <span>فضائي</span>
+        </button>
+        <button id="mobile-theme-btn" type="button">
+          <span
+            ><svg
+              fill="#aaa"
+              width="20px"
+              height="20px"
+              viewBox="-7.5 0 32 32"
+              version="1.1"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <title>dark</title>
+              <path
+                d="M9.75 8.25v0.219c0 0.844-0.375 1.25-1.156 1.25s-1.125-0.406-1.125-1.25v-0.219c0-0.813 0.344-1.219 1.125-1.219s1.156 0.406 1.156 1.219zM12.063 9.25l0.156-0.188c0.469-0.688 1.031-0.781 1.625-0.344 0.625 0.438 0.719 1.031 0.25 1.719l-0.188 0.156c-0.469 0.688-1.031 0.781-1.625 0.313-0.625-0.438-0.688-0.969-0.219-1.656zM5 9.063l0.125 0.188c0.469 0.688 0.406 1.219-0.188 1.656-0.625 0.469-1.219 0.375-1.688-0.313l-0.125-0.156c-0.469-0.688-0.406-1.281 0.188-1.719 0.625-0.438 1.219-0.281 1.688 0.344zM8.594 11.125c2.656 0 4.844 2.188 4.844 4.875 0 2.656-2.188 4.813-4.844 4.813-2.688 0-4.844-2.156-4.844-4.813 0-2.688 2.156-4.875 4.844-4.875zM1.594 12.5l0.219 0.063c0.813 0.25 1.063 0.719 0.844 1.469-0.25 0.75-0.75 0.969-1.531 0.719l-0.219-0.063c-0.781-0.25-1.063-0.719-0.844-1.469 0.25-0.75 0.75-0.969 1.531-0.719zM15.375 12.563l0.219-0.063c0.813-0.25 1.313-0.031 1.531 0.719s-0.031 1.219-0.844 1.469l-0.188 0.063c-0.813 0.25-1.313 0.031-1.531-0.719-0.25-0.75 0.031-1.219 0.813-1.469zM8.594 18.688c1.469 0 2.688-1.219 2.688-2.688 0-1.5-1.219-2.719-2.688-2.719-1.5 0-2.719 1.219-2.719 2.719 0 1.469 1.219 2.688 2.719 2.688zM0.906 17.281l0.219-0.063c0.781-0.25 1.281-0.063 1.531 0.688 0.219 0.75-0.031 1.219-0.844 1.469l-0.219 0.063c-0.781 0.25-1.281 0.063-1.531-0.688-0.219-0.75 0.063-1.219 0.844-1.469zM16.094 17.219l0.188 0.063c0.813 0.25 1.063 0.719 0.844 1.469s-0.719 0.938-1.531 0.688l-0.219-0.063c-0.781-0.25-1.063-0.719-0.813-1.469 0.219-0.75 0.719-0.938 1.531-0.688zM3.125 21.563l0.125-0.188c0.469-0.688 1.063-0.75 1.688-0.313 0.594 0.438 0.656 0.969 0.188 1.656l-0.125 0.188c-0.469 0.688-1.063 0.75-1.688 0.313-0.594-0.438-0.656-0.969-0.188-1.656zM13.906 21.375l0.188 0.188c0.469 0.688 0.375 1.219-0.25 1.656-0.594 0.438-1.156 0.375-1.625-0.313l-0.156-0.188c-0.469-0.688-0.406-1.219 0.219-1.656 0.594-0.438 1.156-0.375 1.625 0.313zM9.75 23.469v0.25c0 0.844-0.375 1.25-1.156 1.25s-1.125-0.406-1.125-1.25v-0.25c0-0.844 0.344-1.25 1.125-1.25s1.156 0.406 1.156 1.25z"
+              ></path></svg
+          ></span>
+          <span>سمة</span>
+        </button>
+      </div>
+      <div id="mobile-route-info" class="route-info">
+        اختر نقطتين على الخريطة لعرض المسارات.
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+      localStorage.setItem('theme', 'light');
+      const map = L.map('map').setView([24.7136, 46.6753], 12); // Riyadh center
+
+      // Base layers: street and satellite
+      const streetLayer = L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+          attribution: '© OpenStreetMap contributors',
+        }
+      ).addTo(map);
+
+      const satelliteLayer = L.tileLayer(
+        'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+        {
+          subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+          attribution: '© Google',
+          maxZoom: 20,
+        }
+      );
+
+      let isSatellite = false;
+      let currentLocationMarker = null;
+      let watchId = null;
+
+      let points = [];
+      let routeLayers = [];
+      let markers = [];
+
+      // Get current location function
+      function getCurrentLocation() {
+        if (!navigator.geolocation) {
+          alert('متصفحك لا يدعم خدمة تحديد الموقع');
+          return;
+        }
+
+        // Show loading indicator
+        const locationBtns = document.querySelectorAll('[id*="location"]');
+        locationBtns.forEach((btn) => {
+          const originalHtml = btn.innerHTML;
+          btn.innerHTML = btn.innerHTML.replace(/📍|⏳/g, '⏳');
+          setTimeout(() => {
+            btn.innerHTML = originalHtml;
+          }, 5000);
+        });
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            const accuracy = position.coords.accuracy;
+
+            // Remove any existing current location marker
+            if (currentLocationMarker) {
+              map.removeLayer(currentLocationMarker);
+            }
+
+            // Add new marker for current location
+            currentLocationMarker = L.marker([latitude, longitude])
+              .addTo(map)
+              .bindPopup('موقعك الحالي')
+              .openPopup();
+
+            // If we don't have a start point, set it as start
+            if (points.length === 0) {
+              points.push({ lat: latitude, lng: longitude });
+              markers.push(currentLocationMarker);
+              alert(
+                'تم تعيين موقعك الحالي كنقطة البداية. اختر نقطة النهاية على الخريطة.'
+              );
+            } else if (points.length === 1) {
+              // If we already have start point, set as end point
+              points.push({ lat: latitude, lng: longitude });
+              markers.push(currentLocationMarker);
+              getRoutes(points[0], points[1]);
+            } else {
+              // If we have both points, replace end point
+              const endMarker = markers.pop();
+              if (endMarker && endMarker !== currentLocationMarker) {
+                map.removeLayer(endMarker);
+              }
+              points[1] = { lat: latitude, lng: longitude };
+              markers.push(currentLocationMarker);
+              routeLayers.forEach((layer) => map.removeLayer(layer));
+              routeLayers = [];
+              getRoutes(points[0], points[1]);
+            }
+
+            // Pan to current location
+            map.setView([latitude, longitude], 16);
+          },
+          (error) => {
+            alert('تعذر الحصول على الموقع: ' + error.message);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 60000,
+          }
+        );
       }
 
-      displayRoutes(uniqueSortedRoutes);
-    } catch (err) {
-      console.error(err);
-      document.getElementById('route-info').innerHTML =
-        `<p style="color:red;">حدث خطأ: ${err.message}</p>`;
-    }
-  }
+      map.on('click', (e) => {
+        if (points.length === 0) {
+          const marker = L.marker(e.latlng)
+            .addTo(map)
+            .bindPopup('بداية')
+            .openPopup();
+          markers.push(marker);
+          points.push(e.latlng);
+          return;
+        }
 
-  function dedupeAndSortRoutes(routes) {
-    const seen = new Set();
-    const unique = [];
+        if (points.length === 1) {
+          const marker = L.marker(e.latlng)
+            .addTo(map)
+            .bindPopup('نهاية')
+            .openPopup();
+          markers.push(marker);
+          points.push(e.latlng);
+          getRoutes(points[0], points[1]);
+          return;
+        }
 
-    for (const route of routes) {
-      const distKmRounded = Math.round((route.distance || 0) / 1000);
-      const timeMinRounded = Math.round((route.duration || 0) / 60);
-      const key = `${distKmRounded}-${timeMinRounded}`;
+        // If already have start and end: replace only the end point
+        if (points.length === 2) {
+          // Remove existing end marker
+          const endMarker = markers.pop();
+          if (endMarker) map.removeLayer(endMarker);
 
-      if (!seen.has(key)) {
-        seen.add(key);
-        unique.push(route);
+          // Add new end marker and update points[1]
+          const newEndMarker = L.marker(e.latlng)
+            .addTo(map)
+            .bindPopup('نهاية')
+            .openPopup();
+          markers.push(newEndMarker);
+          points[1] = e.latlng;
+
+          // Clear previous routes and fetch again
+          routeLayers.forEach((layer) => map.removeLayer(layer));
+          routeLayers = [];
+          getRoutes(points[0], points[1]);
+        }
+      });
+
+      async function getRoutes(start, end) {
+        // Remove old routes
+        routeLayers.forEach((layer) => map.removeLayer(layer));
+        routeLayers = [];
+
+        const baseUrl = 'https://router.project-osrm.org/route/v1/driving/';
+        const coords = `${start.lng},${start.lat};${end.lng},${end.lat}`;
+        const params = '?overview=full&geometries=geojson&alternatives=3';
+
+        try {
+          // Try multiple strategies to obtain up to three distinct routes
+          const requests = [
+            fetch(baseUrl + coords + params),
+            fetch(baseUrl + coords + params + '&exclude=motorway'),
+          ];
+
+          const responses = await Promise.allSettled(requests);
+
+          let allRoutes = [];
+          for (const result of responses) {
+            if (result.status === 'fulfilled') {
+              const res = result.value;
+              if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data.routes)) {
+                  allRoutes = allRoutes.concat(data.routes);
+                }
+              }
+            }
+          }
+
+          const uniqueSortedRoutes = dedupeAndSortRoutes(allRoutes).slice(0, 3);
+
+          if (uniqueSortedRoutes.length === 0) {
+            throw new Error('لم يتم العثور على مسارات');
+          }
+
+          displayRoutes(uniqueSortedRoutes);
+        } catch (err) {
+          console.error(err);
+          document.getElementById(
+            'route-info'
+          ).innerHTML = `<p style="color:red;">حدث خطأ: ${err.message}</p>`;
+          document.getElementById(
+            'mobile-route-info'
+          ).innerHTML = `<p style="color:red;">حدث خطأ: ${err.message}</p>`;
+        }
       }
-    }
 
-    unique.sort((a, b) => (a.duration || 0) - (b.duration || 0));
-    return unique;
-  }
+      function dedupeAndSortRoutes(routes) {
+        const seen = new Set();
+        const unique = [];
 
-  function displayRoutes(routes) {
-    const colors = ['blue', 'green', 'red'];
-    const infoDiv = document.getElementById('route-info');
-    infoDiv.innerHTML = "";
+        for (const route of routes) {
+          const distKmRounded = Math.round((route.distance || 0) / 1000);
+          const timeMinRounded = Math.round((route.duration || 0) / 60);
+          const key = `${distKmRounded}-${timeMinRounded}`;
 
-    routes.slice(0, 3).forEach((route, idx) => {
-      const layer = L.geoJSON(route.geometry, {
-        style: { color: colors[idx % colors.length], weight: 4, opacity: 0.8 }
-      }).addTo(map);
-      routeLayers.push(layer);
+          if (!seen.has(key)) {
+            seen.add(key);
+            unique.push(route);
+          }
+        }
 
-      const distKm = (route.distance / 1000).toFixed(2);
-      const timeMin = Math.round(route.duration / 60);
+        unique.sort((a, b) => (a.duration || 0) - (b.duration || 0));
+        return unique;
+      }
 
-      infoDiv.innerHTML += `
+      function displayRoutes(routes) {
+        const colors = [
+          'var(--route-blue)',
+          'var(--route-green)',
+          'var(--route-red)',
+        ];
+        const infoDiv = document.getElementById('route-info');
+        const mobileInfoDiv = document.getElementById('mobile-route-info');
+
+        infoDiv.innerHTML = '';
+        mobileInfoDiv.innerHTML = '';
+
+        routes.slice(0, 3).forEach((route, idx) => {
+          const layer = L.geoJSON(route.geometry, {
+            style: {
+              color: colors[idx % colors.length],
+              weight: 4,
+              opacity: 0.8,
+            },
+          }).addTo(map);
+          routeLayers.push(layer);
+
+          const distKm = (route.distance / 1000).toFixed(2);
+          const timeMin = Math.round(route.duration / 60);
+
+          const routeHtml = `
         <div class="route">
-          <b>${idx === 0 ? "أسرع مسار" : `بديل ${idx}`}</b><br>
+          <b>${idx === 0 ? 'أسرع مسار' : `بديل ${idx}`}</b><br>
           الزمن: ${timeMin} دقيقة<br>
           المسافة: ${distKm} كم
         </div>
       `;
-    });
 
-    const group = L.featureGroup(routeLayers);
-    map.fitBounds(group.getBounds(), { padding: [20, 20] });
-  }
-
-  function clearSelection() {
-    markers.forEach(m => map.removeLayer(m));
-    markers = [];
-
-    routeLayers.forEach(layer => map.removeLayer(layer));
-    routeLayers = [];
-
-    points = [];
-
-    const infoDiv = document.getElementById('route-info');
-    if (infoDiv) {
-      infoDiv.innerHTML = 'اختر نقطتين على الخريطة لعرض المسارات.';
-    }
-  }
-
-  const clearBtn = document.getElementById('clear-btn');
-  if (clearBtn) {
-    clearBtn.addEventListener('click', clearSelection);
-  }
-
-  const basemapToggleBtn = document.getElementById('basemap-toggle-btn');
-  if (basemapToggleBtn) {
-    basemapToggleBtn.addEventListener('click', () => {
-      if (isSatellite) {
-        map.removeLayer(satelliteLayer);
-        streetLayer.addTo(map);
-        basemapToggleBtn.textContent = 'عرض فضائي';
-      } else {
-        map.removeLayer(streetLayer);
-        satelliteLayer.addTo(map);
-        basemapToggleBtn.textContent = 'عرض الشوارع';
-      }
-      isSatellite = !isSatellite;
-    });
-  }
-
-  // Theme toggle with persistence (classic icons: ☾ for light, ☼ for dark)
-  const themeToggleBtn = document.getElementById('theme-toggle-btn');
-  const storedTheme = localStorage.getItem('theme');
-  if (storedTheme === 'dark') {
-    document.documentElement.classList.add('dark');
-    if (themeToggleBtn) themeToggleBtn.textContent = '☼';
-  } else {
-    if (themeToggleBtn) themeToggleBtn.textContent = '☾';
-  }
-
-  if (themeToggleBtn) {
-    themeToggleBtn.addEventListener('click', () => {
-      const root = document.documentElement;
-      const isDark = root.classList.toggle('dark');
-      localStorage.setItem('theme', isDark ? 'dark' : 'light');
-      themeToggleBtn.textContent = isDark ? '☼' : '☾';
-    });
-  }
-
-  // Mobile sidebar toggle (map control only on small screens)
-  const sidebar = document.getElementById('sidebar');
-  let sidebarToggleControlInstance = null;
-
-  function ensureSidebarVisibilityByViewport() {
-    if (window.matchMedia('(max-width: 1024px)').matches) {
-      // small: hidden by default
-      sidebar.classList.remove('hidden');
-      sidebar.classList.remove('show');
-      addSidebarToggleControl();
-    } else {
-      // desktop: always visible
-      sidebar.classList.add('show');
-      removeSidebarToggleControl();
-    }
-  }
-
-  function addSidebarToggleControl() {
-    if (sidebarToggleControlInstance) return;
-    const SidebarToggleControl = L.Control.extend({
-      onAdd: function () {
-        const container = L.DomUtil.create('div', 'leaflet-bar');
-        const link = L.DomUtil.create('a', '', container);
-        link.href = '#';
-        link.title = 'عرض/إخفاء القائمة';
-        link.innerHTML = '☰';
-        L.DomEvent.on(link, 'click', (e) => {
-          L.DomEvent.stopPropagation(e);
-          L.DomEvent.preventDefault(e);
-          sidebar.classList.toggle('show');
+          infoDiv.innerHTML += routeHtml;
+          mobileInfoDiv.innerHTML += routeHtml;
         });
-        L.DomEvent.disableClickPropagation(container);
-        return container;
-      },
-      onRemove: function () {}
-    });
-    sidebarToggleControlInstance = new SidebarToggleControl({ position: 'topright' });
-    sidebarToggleControlInstance.addTo(map);
-  }
 
-  function removeSidebarToggleControl() {
-    if (!sidebarToggleControlInstance) return;
-    map.removeControl(sidebarToggleControlInstance);
-    sidebarToggleControlInstance = null;
-  }
-
-  ensureSidebarVisibilityByViewport();
-  window.addEventListener('resize', ensureSidebarVisibilityByViewport);
-
-  // Close sidebar button (small screens)
-  const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
-  if (sidebarCloseBtn && sidebar) {
-    sidebarCloseBtn.addEventListener('click', () => {
-      if (window.matchMedia('(max-width: 1024px)').matches) {
-        sidebar.classList.remove('show');
+        const group = L.featureGroup(routeLayers);
+        map.fitBounds(group.getBounds(), { padding: [20, 20] });
       }
-    });
-  }
-  </script>
-</body>
+
+      function clearSelection() {
+        markers.forEach((m) => map.removeLayer(m));
+        markers = [];
+
+        routeLayers.forEach((layer) => map.removeLayer(layer));
+        routeLayers = [];
+
+        points = [];
+
+        // Don't remove current location marker
+        if (currentLocationMarker) {
+          map.removeLayer(currentLocationMarker);
+          currentLocationMarker = null;
+        }
+
+        const infoDiv = document.getElementById('route-info');
+        const mobileInfoDiv = document.getElementById('mobile-route-info');
+
+        if (infoDiv) {
+          infoDiv.innerHTML = 'اختر نقطتين على الخريطة لعرض المسارات.';
+        }
+
+        if (mobileInfoDiv) {
+          mobileInfoDiv.innerHTML = 'اختر نقطتين على الخريطة لعرض المسارات.';
+        }
+      }
+
+      // Event listeners
+      const clearBtn = document.getElementById('clear-btn');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', clearSelection);
+      }
+
+      const mobileClearBtn = document.getElementById('mobile-clear-btn');
+      if (mobileClearBtn) {
+        mobileClearBtn.addEventListener('click', clearSelection);
+      }
+
+      const basemapToggleBtn = document.getElementById('basemap-toggle-btn');
+      if (basemapToggleBtn) {
+        basemapToggleBtn.addEventListener('click', toggleBasemap);
+      }
+
+      const mobileBasemapBtn = document.getElementById('mobile-basemap-btn');
+      if (mobileBasemapBtn) {
+        mobileBasemapBtn.addEventListener('click', toggleBasemap);
+      }
+
+      function toggleBasemap() {
+        if (isSatellite) {
+          map.removeLayer(satelliteLayer);
+          streetLayer.addTo(map);
+          basemapToggleBtn.innerHTML = `<span>          <svg
+            width="20px"
+            height="20px"
+            viewBox="0 0 512 512"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              fill="#aaa"
+              d="M314.125 45.125l-36.28 10.97 26.717 38.874L340.844 84l-26.72-38.875zM260.47 61.313l-43 13 26.686 38.874 41.625-12.562-26.467-38.5 1.156-.813zm91.467 38.874l-36.28 10.938 27.374 39.813L379.314 140l-27.375-39.813zM120.47 107.78l-36.282 10.94 26.718 38.905 36.28-10.97-26.717-38.874zm176.405 9.032l-41.594 12.563 12.814 18.656c13.59 1.764 26.138 6.878 36.844 14.44l19.312-5.845-27.375-39.813zm-230.03 7.157l-43 12.968 26.718 38.906 41.562-12.563-26.47-38.5 1.19-.81zm323.56 32.155l-36.28 10.97 25.97 37.81 36.28-10.936-25.97-37.845zm-232.092 6.72L122 173.78l27.375 39.814 36.28-10.938-27.343-39.812zm99.125 3.186c-22.736 0-42.626 11.753-53.97 29.532l66.782 97.188c6.682-1.346 12.98-3.725 18.72-6.97l7.874 11.69 15.78-10.033-8.874-13.187c10.95-11.475 17.656-27.028 17.656-44.22 0-35.446-28.52-64-63.97-64zm77.906 6.75l-14.438 4.345c9.396 11.262 15.84 25.07 18.188 40.188l22.22-6.72-25.97-37.812zm-232.125 6.69L61.655 192l27.313 39.813 41.593-12.563-27.344-39.78zm324.28 30.655l-36.28 10.97 27.342 39.81 36.313-10.967-27.375-39.813zm-230.72 8.688l-36.31 10.968 25.968 37.782 36.312-10.968-25.97-37.78zm175.657 7.937l-32.625 9.875c-.35 4.407-1.012 8.72-2.03 12.906l20.312 29.595 41.687-12.563-27.342-39.812zm-230.75 8.688L100.094 248l25.97 37.813 41.592-12.594-25.97-37.783zm324.282 30.656l-36.314 10.97 26 37.81 36.313-10.937-26-37.843zm-232.095 6.687l-36.313 10.97 27.344 39.78 36.313-10.967-27.345-39.782zm177.03 9.94L369.22 295.31l25.967 37.813 41.688-12.563-25.97-37.843zm-232.124 6.686l-41.624 12.563 27.313 39.81 41.655-12.592-27.344-39.782zm152.314 8.47L301.78 316.5l37.314 58.656 29.312-18.625-37.312-58.655zm-58.75 30.874l-36.313 10.97 26 37.81 36.314-10.936-26-37.844zm-55.094 16.625l-41.656 12.594 25.97 37.81 41.655-12.56-25.97-37.845zm178.313 20.875c-36.29.507-64.44 29.054-70.375 64.844L368.5 404l9.72 14.406c-1.222 2.47-1.908 5.245-1.908 8.188 0 10.222 8.278 18.53 18.5 18.53 10.223 0 18.5-8.308 18.5-18.53 0-10.223-8.277-18.5-18.5-18.5-.335 0-.67.045-1 .062l-9.437-14.062 37.438-23.438c-9.068-3.125-17.876-4.523-26.25-4.406z"
+            />
+          </svg></span><span>فضائي</span>`;
+          if (mobileBasemapBtn)
+            mobileBasemapBtn.innerHTML = `<span>          <svg
+            width="20px"
+            height="20px"
+            viewBox="0 0 512 512"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              fill="#aaa"
+              d="M314.125 45.125l-36.28 10.97 26.717 38.874L340.844 84l-26.72-38.875zM260.47 61.313l-43 13 26.686 38.874 41.625-12.562-26.467-38.5 1.156-.813zm91.467 38.874l-36.28 10.938 27.374 39.813L379.314 140l-27.375-39.813zM120.47 107.78l-36.282 10.94 26.718 38.905 36.28-10.97-26.717-38.874zm176.405 9.032l-41.594 12.563 12.814 18.656c13.59 1.764 26.138 6.878 36.844 14.44l19.312-5.845-27.375-39.813zm-230.03 7.157l-43 12.968 26.718 38.906 41.562-12.563-26.47-38.5 1.19-.81zm323.56 32.155l-36.28 10.97 25.97 37.81 36.28-10.936-25.97-37.845zm-232.092 6.72L122 173.78l27.375 39.814 36.28-10.938-27.343-39.812zm99.125 3.186c-22.736 0-42.626 11.753-53.97 29.532l66.782 97.188c6.682-1.346 12.98-3.725 18.72-6.97l7.874 11.69 15.78-10.033-8.874-13.187c10.95-11.475 17.656-27.028 17.656-44.22 0-35.446-28.52-64-63.97-64zm77.906 6.75l-14.438 4.345c9.396 11.262 15.84 25.07 18.188 40.188l22.22-6.72-25.97-37.812zm-232.125 6.69L61.655 192l27.313 39.813 41.593-12.563-27.344-39.78zm324.28 30.655l-36.28 10.97 27.342 39.81 36.313-10.967-27.375-39.813zm-230.72 8.688l-36.31 10.968 25.968 37.782 36.312-10.968-25.97-37.78zm175.657 7.937l-32.625 9.875c-.35 4.407-1.012 8.72-2.03 12.906l20.312 29.595 41.687-12.563-27.342-39.812zm-230.75 8.688L100.094 248l25.97 37.813 41.592-12.594-25.97-37.783zm324.282 30.656l-36.314 10.97 26 37.81 36.313-10.937-26-37.843zm-232.095 6.687l-36.313 10.97 27.344 39.78 36.313-10.967-27.345-39.782zm177.03 9.94L369.22 295.31l25.967 37.813 41.688-12.563-25.97-37.843zm-232.124 6.686l-41.624 12.563 27.313 39.81 41.655-12.592-27.344-39.782zm152.314 8.47L301.78 316.5l37.314 58.656 29.312-18.625-37.312-58.655zm-58.75 30.874l-36.313 10.97 26 37.81 36.314-10.936-26-37.844zm-55.094 16.625l-41.656 12.594 25.97 37.81 41.655-12.56-25.97-37.845zm178.313 20.875c-36.29.507-64.44 29.054-70.375 64.844L368.5 404l9.72 14.406c-1.222 2.47-1.908 5.245-1.908 8.188 0 10.222 8.278 18.53 18.5 18.53 10.223 0 18.5-8.308 18.5-18.53 0-10.223-8.277-18.5-18.5-18.5-.335 0-.67.045-1 .062l-9.437-14.062 37.438-23.438c-9.068-3.125-17.876-4.523-26.25-4.406z"
+            />
+          </svg></span><span>فضائي</span>`;
+        } else {
+          map.removeLayer(streetLayer);
+          satelliteLayer.addTo(map);
+          basemapToggleBtn.innerHTML = `<span><svg fill="#aaa" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7.97,2.242l-5,20A1,1,0,0,1,2,23a1.025,1.025,0,0,1-.244-.03,1,1,0,0,1-.727-1.212l5-20a1,1,0,1,1,1.94.484Zm10-.484a1,1,0,1,0-1.94.484l5,20A1,1,0,0,0,22,23a1.017,1.017,0,0,0,.243-.03,1,1,0,0,0,.728-1.212ZM12,1a1,1,0,0,0-1,1V6a1,1,0,0,0,2,0V2A1,1,0,0,0,12,1Zm0,7.912a1,1,0,0,0-1,1v4.176a1,1,0,1,0,2,0V9.912A1,1,0,0,0,12,8.912ZM12,17a1,1,0,0,0-1,1v4a1,1,0,0,0,2,0V18A1,1,0,0,0,12,17Z"/></svg></span><span>شوارع</span>`;
+
+          if (mobileBasemapBtn)
+            mobileBasemapBtn.innerHTML = `<span><svg fill="#aaa" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7.97,2.242l-5,20A1,1,0,0,1,2,23a1.025,1.025,0,0,1-.244-.03,1,1,0,0,1-.727-1.212l5-20a1,1,0,1,1,1.94.484Zm10-.484a1,1,0,1,0-1.94.484l5,20A1,1,0,0,0,22,23a1.017,1.017,0,0,0,.243-.03,1,1,0,0,0,.728-1.212ZM12,1a1,1,0,0,0-1,1V6a1,1,0,0,0,2,0V2A1,1,0,0,0,12,1Zm0,7.912a1,1,0,0,0-1,1v4.176a1,1,0,1,0,2,0V9.912A1,1,0,0,0,12,8.912ZM12,17a1,1,0,0,0-1,1v4a1,1,0,0,0,2,0V18A1,1,0,0,0,12,17Z"/></svg></span><span>شوارع</span>`;
+        }
+        isSatellite = !isSatellite;
+      }
+
+      // Location buttons
+      const classicLocationBtn = document.getElementById(
+        'classic-location-btn'
+      );
+      if (classicLocationBtn) {
+        classicLocationBtn.addEventListener('click', getCurrentLocation);
+      }
+
+      const sidebarLocationBtn = document.getElementById('location-btn');
+      if (sidebarLocationBtn) {
+        sidebarLocationBtn.addEventListener('click', getCurrentLocation);
+      }
+
+      const mobileLocationBtn = document.getElementById('mobile-location-btn');
+      if (mobileLocationBtn) {
+        mobileLocationBtn.addEventListener('click', getCurrentLocation);
+      }
+
+      // Theme toggle with persistence
+      const themeToggleBtn = document.getElementById('theme-toggle-btn');
+      const mobileThemeBtn = document.getElementById('mobile-theme-btn');
+      const storedTheme = localStorage.getItem('theme') || 'dark';
+      console.log(storedTheme);
+      if (storedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+        if (themeToggleBtn)
+          themeToggleBtn.innerHTML = `<span><svg fill="#aaa" width="20px" height="20px" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg">
+<title>dark</title>
+<path d="M9.75 8.25v0.219c0 0.844-0.375 1.25-1.156 1.25s-1.125-0.406-1.125-1.25v-0.219c0-0.813 0.344-1.219 1.125-1.219s1.156 0.406 1.156 1.219zM12.063 9.25l0.156-0.188c0.469-0.688 1.031-0.781 1.625-0.344 0.625 0.438 0.719 1.031 0.25 1.719l-0.188 0.156c-0.469 0.688-1.031 0.781-1.625 0.313-0.625-0.438-0.688-0.969-0.219-1.656zM5 9.063l0.125 0.188c0.469 0.688 0.406 1.219-0.188 1.656-0.625 0.469-1.219 0.375-1.688-0.313l-0.125-0.156c-0.469-0.688-0.406-1.281 0.188-1.719 0.625-0.438 1.219-0.281 1.688 0.344zM8.594 11.125c2.656 0 4.844 2.188 4.844 4.875 0 2.656-2.188 4.813-4.844 4.813-2.688 0-4.844-2.156-4.844-4.813 0-2.688 2.156-4.875 4.844-4.875zM1.594 12.5l0.219 0.063c0.813 0.25 1.063 0.719 0.844 1.469-0.25 0.75-0.75 0.969-1.531 0.719l-0.219-0.063c-0.781-0.25-1.063-0.719-0.844-1.469 0.25-0.75 0.75-0.969 1.531-0.719zM15.375 12.563l0.219-0.063c0.813-0.25 1.313-0.031 1.531 0.719s-0.031 1.219-0.844 1.469l-0.188 0.063c-0.813 0.25-1.313 0.031-1.531-0.719-0.25-0.75 0.031-1.219 0.813-1.469zM8.594 18.688c1.469 0 2.688-1.219 2.688-2.688 0-1.5-1.219-2.719-2.688-2.719-1.5 0-2.719 1.219-2.719 2.719 0 1.469 1.219 2.688 2.719 2.688zM0.906 17.281l0.219-0.063c0.781-0.25 1.281-0.063 1.531 0.688 0.219 0.75-0.031 1.219-0.844 1.469l-0.219 0.063c-0.781 0.25-1.281 0.063-1.531-0.688-0.219-0.75 0.063-1.219 0.844-1.469zM16.094 17.219l0.188 0.063c0.813 0.25 1.063 0.719 0.844 1.469s-0.719 0.938-1.531 0.688l-0.219-0.063c-0.781-0.25-1.063-0.719-0.813-1.469 0.219-0.75 0.719-0.938 1.531-0.688zM3.125 21.563l0.125-0.188c0.469-0.688 1.063-0.75 1.688-0.313 0.594 0.438 0.656 0.969 0.188 1.656l-0.125 0.188c-0.469 0.688-1.063 0.75-1.688 0.313-0.594-0.438-0.656-0.969-0.188-1.656zM13.906 21.375l0.188 0.188c0.469 0.688 0.375 1.219-0.25 1.656-0.594 0.438-1.156 0.375-1.625-0.313l-0.156-0.188c-0.469-0.688-0.406-1.219 0.219-1.656 0.594-0.438 1.156-0.375 1.625 0.313zM9.75 23.469v0.25c0 0.844-0.375 1.25-1.156 1.25s-1.125-0.406-1.125-1.25v-0.25c0-0.844 0.344-1.25 1.125-1.25s1.156 0.406 1.156 1.25z"></path>
+</svg></span>`;
+        if (mobileThemeBtn)
+          mobileThemeBtn.innerHTML = `<span><svg fill="#aaa" width="20px" height="20px" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg">
+<title>dark</title>
+<path d="M9.75 8.25v0.219c0 0.844-0.375 1.25-1.156 1.25s-1.125-0.406-1.125-1.25v-0.219c0-0.813 0.344-1.219 1.125-1.219s1.156 0.406 1.156 1.219zM12.063 9.25l0.156-0.188c0.469-0.688 1.031-0.781 1.625-0.344 0.625 0.438 0.719 1.031 0.25 1.719l-0.188 0.156c-0.469 0.688-1.031 0.781-1.625 0.313-0.625-0.438-0.688-0.969-0.219-1.656zM5 9.063l0.125 0.188c0.469 0.688 0.406 1.219-0.188 1.656-0.625 0.469-1.219 0.375-1.688-0.313l-0.125-0.156c-0.469-0.688-0.406-1.281 0.188-1.719 0.625-0.438 1.219-0.281 1.688 0.344zM8.594 11.125c2.656 0 4.844 2.188 4.844 4.875 0 2.656-2.188 4.813-4.844 4.813-2.688 0-4.844-2.156-4.844-4.813 0-2.688 2.156-4.875 4.844-4.875zM1.594 12.5l0.219 0.063c0.813 0.25 1.063 0.719 0.844 1.469-0.25 0.75-0.75 0.969-1.531 0.719l-0.219-0.063c-0.781-0.25-1.063-0.719-0.844-1.469 0.25-0.75 0.75-0.969 1.531-0.719zM15.375 12.563l0.219-0.063c0.813-0.25 1.313-0.031 1.531 0.719s-0.031 1.219-0.844 1.469l-0.188 0.063c-0.813 0.25-1.313 0.031-1.531-0.719-0.25-0.75 0.031-1.219 0.813-1.469zM8.594 18.688c1.469 0 2.688-1.219 2.688-2.688 0-1.5-1.219-2.719-2.688-2.719-1.5 0-2.719 1.219-2.719 2.719 0 1.469 1.219 2.688 2.719 2.688zM0.906 17.281l0.219-0.063c0.781-0.25 1.281-0.063 1.531 0.688 0.219 0.75-0.031 1.219-0.844 1.469l-0.219 0.063c-0.781 0.25-1.281 0.063-1.531-0.688-0.219-0.75 0.063-1.219 0.844-1.469zM16.094 17.219l0.188 0.063c0.813 0.25 1.063 0.719 0.844 1.469s-0.719 0.938-1.531 0.688l-0.219-0.063c-0.781-0.25-1.063-0.719-0.813-1.469 0.219-0.75 0.719-0.938 1.531-0.688zM3.125 21.563l0.125-0.188c0.469-0.688 1.063-0.75 1.688-0.313 0.594 0.438 0.656 0.969 0.188 1.656l-0.125 0.188c-0.469 0.688-1.063 0.75-1.688 0.313-0.594-0.438-0.656-0.969-0.188-1.656zM13.906 21.375l0.188 0.188c0.469 0.688 0.375 1.219-0.25 1.656-0.594 0.438-1.156 0.375-1.625-0.313l-0.156-0.188c-0.469-0.688-0.406-1.219 0.219-1.656 0.594-0.438 1.156-0.375 1.625 0.313zM9.75 23.469v0.25c0 0.844-0.375 1.25-1.156 1.25s-1.125-0.406-1.125-1.25v-0.25c0-0.844 0.344-1.25 1.125-1.25s1.156 0.406 1.156 1.25z"></path>
+</svg></span><span>سمة</span>`;
+      } else {
+        if (themeToggleBtn)
+          themeToggleBtn.innerHTML = `<span><svg width="20px" height="20px" viewBox="0 0 48 48" id="b" xmlns="http://www.w3.org/2000/svg"><defs><style>.c{fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;}</style></defs><path class="c" d="m32.8,29.3c-8.9-.8-16.2-7.8-17.5-16.6-.3-1.8-.3-3.7,0-5.4.2-1.4-1.4-2.3-2.5-1.6C6.3,9.7,2.1,16.9,2.5,25c.5,10.7,9,19.5,19.7,20.4,10.6.9,19.8-6,22.5-15.6.4-1.4-1-2.6-2.3-2-2.9,1.3-6.1,1.8-9.6,1.5Z"/></svg></span>`;
+        if (mobileThemeBtn)
+          mobileThemeBtn.innerHTML = `<span><svg width="20px" height="20px" viewBox="0 0 48 48" id="b" xmlns="http://www.w3.org/2000/svg"><defs><style>.c{fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;}</style></defs><path class="c" d="m32.8,29.3c-8.9-.8-16.2-7.8-17.5-16.6-.3-1.8-.3-3.7,0-5.4.2-1.4-1.4-2.3-2.5-1.6C6.3,9.7,2.1,16.9,2.5,25c.5,10.7,9,19.5,19.7,20.4,10.6.9,19.8-6,22.5-15.6.4-1.4-1-2.6-2.3-2-2.9,1.3-6.1,1.8-9.6,1.5Z"/></svg></span><span>سمة</span>`;
+      }
+
+      function toggleTheme() {
+        const root = document.documentElement;
+        const isDark = root.classList.toggle('dark');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+
+        if (themeToggleBtn)
+          themeToggleBtn.innerHTML = isDark
+            ? `<span><svg fill="#aaa" width="20px" height="20px" viewBox="-7.5 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg">
+<title>dark</title>
+<path d="M9.75 8.25v0.219c0 0.844-0.375 1.25-1.156 1.25s-1.125-0.406-1.125-1.25v-0.219c0-0.813 0.344-1.219 1.125-1.219s1.156 0.406 1.156 1.219zM12.063 9.25l0.156-0.188c0.469-0.688 1.031-0.781 1.625-0.344 0.625 0.438 0.719 1.031 0.25 1.719l-0.188 0.156c-0.469 0.688-1.031 0.781-1.625 0.313-0.625-0.438-0.688-0.969-0.219-1.656zM5 9.063l0.125 0.188c0.469 0.688 0.406 1.219-0.188 1.656-0.625 0.469-1.219 0.375-1.688-0.313l-0.125-0.156c-0.469-0.688-0.406-1.281 0.188-1.719 0.625-0.438 1.219-0.281 1.688 0.344zM8.594 11.125c2.656 0 4.844 2.188 4.844 4.875 0 2.656-2.188 4.813-4.844 4.813-2.688 0-4.844-2.156-4.844-4.813 0-2.688 2.156-4.875 4.844-4.875zM1.594 12.5l0.219 0.063c0.813 0.25 1.063 0.719 0.844 1.469-0.25 0.75-0.75 0.969-1.531 0.719l-0.219-0.063c-0.781-0.25-1.063-0.719-0.844-1.469 0.25-0.75 0.75-0.969 1.531-0.719zM15.375 12.563l0.219-0.063c0.813-0.25 1.313-0.031 1.531 0.719s-0.031 1.219-0.844 1.469l-0.188 0.063c-0.813 0.25-1.313 0.031-1.531-0.719-0.25-0.75 0.031-1.219 0.813-1.469zM8.594 18.688c1.469 0 2.688-1.219 2.688-2.688 0-1.5-1.219-2.719-2.688-2.719-1.5 0-2.719 1.219-2.719 2.719 0 1.469 1.219 2.688 2.719 2.688zM0.906 17.281l0.219-0.063c0.781-0.25 1.281-0.063 1.531 0.688 0.219 0.75-0.031 1.219-0.844 1.469l-0.219 0.063c-0.781 0.25-1.281 0.063-1.531-0.688-0.219-0.75 0.063-1.219 0.844-1.469zM16.094 17.219l0.188 0.063c0.813 0.25 1.063 0.719 0.844 1.469s-0.719 0.938-1.531 0.688l-0.219-0.063c-0.781-0.25-1.063-0.719-0.813-1.469 0.219-0.75 0.719-0.938 1.531-0.688zM3.125 21.563l0.125-0.188c0.469-0.688 1.063-0.75 1.688-0.313 0.594 0.438 0.656 0.969 0.188 1.656l-0.125 0.188c-0.469 0.688-1.063 0.75-1.688 0.313-0.594-0.438-0.656-0.969-0.188-1.656zM13.906 21.375l0.188 0.188c0.469 0.688 0.375 1.219-0.25 1.656-0.594 0.438-1.156 0.375-1.625-0.313l-0.156-0.188c-0.469-0.688-0.406-1.219 0.219-1.656 0.594-0.438 1.156-0.375 1.625 0.313zM9.75 23.469v0.25c0 0.844-0.375 1.25-1.156 1.25s-1.125-0.406-1.125-1.25v-0.25c0-0.844 0.344-1.25 1.125-1.25s1.156 0.406 1.156 1.25z"></path>
+</svg></span>`
+            : `<span><svg width="20px" height="20px" viewBox="0 0 48 48" id="b" xmlns="http://www.w3.org/2000/svg"><defs><style>.c{fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;}</style></defs><path class="c" d="m32.8,29.3c-8.9-.8-16.2-7.8-17.5-16.6-.3-1.8-.3-3.7,0-5.4.2-1.4-1.4-2.3-2.5-1.6C6.3,9.7,2.1,16.9,2.5,25c.5,10.7,9,19.5,19.7,20.4,10.6.9,19.8-6,22.5-15.6.4-1.4-1-2.6-2.3-2-2.9,1.3-6.1,1.8-9.6,1.5Z"/></svg></span>`;
+
+        if (mobileThemeBtn)
+          mobileThemeBtn.innerHTML = isDark
+            ? `<span><svg fill="#aaa" width="20px" height="20px" viewBox="-7.5 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg">
+<title>dark</title>
+<path d="M9.75 8.25v0.219c0 0.844-0.375 1.25-1.156 1.25s-1.125-0.406-1.125-1.25v-0.219c0-0.813 0.344-1.219 1.125-1.219s1.156 0.406 1.156 1.219zM12.063 9.25l0.156-0.188c0.469-0.688 1.031-0.781 1.625-0.344 0.625 0.438 0.719 1.031 0.25 1.719l-0.188 0.156c-0.469 0.688-1.031 0.781-1.625 0.313-0.625-0.438-0.688-0.969-0.219-1.656zM5 9.063l0.125 0.188c0.469 0.688 0.406 1.219-0.188 1.656-0.625 0.469-1.219 0.375-1.688-0.313l-0.125-0.156c-0.469-0.688-0.406-1.281 0.188-1.719 0.625-0.438 1.219-0.281 1.688 0.344zM8.594 11.125c2.656 0 4.844 2.188 4.844 4.875 0 2.656-2.188 4.813-4.844 4.813-2.688 0-4.844-2.156-4.844-4.813 0-2.688 2.156-4.875 4.844-4.875zM1.594 12.5l0.219 0.063c0.813 0.25 1.063 0.719 0.844 1.469-0.25 0.75-0.75 0.969-1.531 0.719l-0.219-0.063c-0.781-0.25-1.063-0.719-0.844-1.469 0.25-0.75 0.75-0.969 1.531-0.719zM15.375 12.563l0.219-0.063c0.813-0.25 1.313-0.031 1.531 0.719s-0.031 1.219-0.844 1.469l-0.188 0.063c-0.813 0.25-1.313 0.031-1.531-0.719-0.25-0.75 0.031-1.219 0.813-1.469zM8.594 18.688c1.469 0 2.688-1.219 2.688-2.688 0-1.5-1.219-2.719-2.688-2.719-1.5 0-2.719 1.219-2.719 2.719 0 1.469 1.219 2.688 2.719 2.688zM0.906 17.281l0.219-0.063c0.781-0.25 1.281-0.063 1.531 0.688 0.219 0.75-0.031 1.219-0.844 1.469l-0.219 0.063c-0.781 0.25-1.281 0.063-1.531-0.688-0.219-0.75 0.063-1.219 0.844-1.469zM16.094 17.219l0.188 0.063c0.813 0.25 1.063 0.719 0.844 1.469s-0.719 0.938-1.531 0.688l-0.219-0.063c-0.781-0.25-1.063-0.719-0.813-1.469 0.219-0.75 0.719-0.938 1.531-0.688zM3.125 21.563l0.125-0.188c0.469-0.688 1.063-0.75 1.688-0.313 0.594 0.438 0.656 0.969 0.188 1.656l-0.125 0.188c-0.469 0.688-1.063 0.75-1.688 0.313-0.594-0.438-0.656-0.969-0.188-1.656zM13.906 21.375l0.188 0.188c0.469 0.688 0.375 1.219-0.25 1.656-0.594 0.438-1.156 0.375-1.625-0.313l-0.156-0.188c-0.469-0.688-0.406-1.219 0.219-1.656 0.594-0.438 1.156-0.375 1.625 0.313zM9.75 23.469v0.25c0 0.844-0.375 1.25-1.156 1.25s-1.125-0.406-1.125-1.25v-0.25c0-0.844 0.344-1.25 1.125-1.25s1.156 0.406 1.156 1.25z"></path>
+</svg></span><span>سمة</span>`
+            : `<span><svg width="20px" height="20px" viewBox="0 0 48 48" id="b" xmlns="http://www.w3.org/2000/svg"><defs><style>.c{fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;}</style></defs><path class="c" d="m32.8,29.3c-8.9-.8-16.2-7.8-17.5-16.6-.3-1.8-.3-3.7,0-5.4.2-1.4-1.4-2.3-2.5-1.6C6.3,9.7,2.1,16.9,2.5,25c.5,10.7,9,19.5,19.7,20.4,10.6.9,19.8-6,22.5-15.6.4-1.4-1-2.6-2.3-2-2.9,1.3-6.1,1.8-9.6,1.5Z"/></svg></span><span>سمة</span>`;
+      }
+
+      if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', toggleTheme);
+      }
+
+      if (mobileThemeBtn) {
+        mobileThemeBtn.addEventListener('click', toggleTheme);
+      }
+
+      // Initialize the map
+      streetLayer.addTo(map);
+    </script>
+  </body>
 </html>
