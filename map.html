@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>نموذج خريطة مع OSRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+  /* Base theme variables (light by default) */
+  :root {
+    --bg: #ffffff;
+    --bg-elev: #f2f3f5;
+    --text: #0f1419; /* X-like primary text */
+    --text-muted: #536471; /* X muted */
+    --border: #e1e8ed;
+    --accent: #1d9bf0; /* X blue */
+    --accent-weak: rgba(29, 155, 240, 0.1);
+    --btn-bg: #eff3f4;
+    --btn-text: #0f1419;
+  }
+
+  :root.dark {
+    --bg: #000000;
+    --bg-elev: #16181c;
+    --text: #e7e9ea;
+    --text-muted: #8b98a5;
+    --border: #2f3336;
+    --accent: #1d9bf0;
+    --accent-weak: rgba(29, 155, 240, 0.15);
+    --btn-bg: #1d1f23;
+    --btn-text: #e7e9ea;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    font-family: 'Tajawal', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  #map {
+    height: 100%;
+    width: calc(100% - 192px);
+    float: left; /* map on left in RTL layout */
+  }
+
+  #sidebar {
+    width: 192px;
+    height: 100%;
+    float: right;
+    background: var(--bg);
+    border-left: 1px solid var(--border);
+    padding: 12px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  #sidebar .close-btn { display: none; }
+
+  @media (max-width: 1024px) {
+    #sidebar .close-btn { display: inline-flex; }
+  }
+
+  .sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .icon-btn {
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  .icon-btn:hover { background: var(--accent-weak); border-color: var(--accent); }
+
+  .toolbar {
+    display: flex;
+    flex-direction: column; /* stack actions as column */
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  button {
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  button:hover { background: var(--accent-weak); border-color: var(--accent); }
+
+  .route {
+    margin-bottom: 10px;
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+  }
+
+  /* route color hints */
+  .route:nth-child(1) { box-shadow: inset 0 0 0 1px rgba(0,0,255,0.1); }
+  .route:nth-child(2) { box-shadow: inset 0 0 0 1px rgba(0,128,0,0.1); }
+  .route:nth-child(3) { box-shadow: inset 0 0 0 1px rgba(255,0,0,0.1); }
+
+  /* Leaflet tweaks to match theme */
+  .leaflet-control-attribution {
+    background: rgba(0,0,0,0.4);
+    color: #fff;
+    border-radius: 6px;
+    padding: 2px 6px;
+  }
+
+  /* Remove floating button class (no longer used) */
+  .floating { display: none !important; }
+
+  /* Route overlay for small screens (top-right) */
+  .route-overlay {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    left: auto;
+    max-width: 70vw;
+    width: 320px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    padding: 10px;
+    z-index: 1600;
+    display: none;
+  }
+  .route-overlay .route {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .route-overlay .route:last-child { border-bottom: none; }
+
+  /* Responsive */
+  @media (max-width: 1024px) {
+    #map { width: 100%; float: none; }
+    #sidebar {
+      width: 48%;
+      max-width: 216px;
+      position: fixed;
+      top: 0;
+      right: 0; /* slides from right in RTL */
+      height: 100%;
+      transform: translateX(100%); /* hidden by default */
+      transition: transform 0.25s ease;
+      box-shadow: -8px 0 24px rgba(0,0,0,0.15);
+      z-index: 1500; /* ensure above map */
+    }
+    #sidebar.show { transform: translateX(0); }
+    .route-overlay.visible { display: block; }
+  }
+
+  @media (min-width: 1025px) {
+    #map { width: calc(100% - 192px); float: left; }
+    #sidebar {
+      position: static;
+      width: 192px;
+      height: 100%;
+      transform: none; /* always visible */
+      box-shadow: none;
+      z-index: auto;
+    }
+  }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <button id="theme-toggle-btn" class="icon-btn" type="button" aria-label="تبديل السمة">☾</button>
+      <button id="sidebar-close-btn" class="icon-btn close-btn" type="button" aria-label="إغلاق">✕</button>
+    </div>
+    <h2>تفاصيل المسار</h2>
+    <div class="toolbar">
+      <button id="clear-btn" type="button">مسح الاختيار</button>
+      <button id="basemap-toggle-btn" type="button">عرض فضائي</button>
+    </div>
+    <div id="route-info">اختر نقطتين على الخريطة لعرض المسارات.</div>
+  </div>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+  const map = L.map('map').setView([24.7136, 46.6753], 12); // Riyadh center
+
+  // Base layers: street and satellite
+  const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  const satelliteLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+    subdomains: ['mt0','mt1','mt2','mt3'],
+    attribution: '© Google',
+    maxZoom: 20
+  });
+
+  let isSatellite = false;
+
+  let points = [];
+  let routeLayers = [];
+  let markers = [];
+
+  map.on('click', (e) => {
+    if (points.length === 0) {
+      const marker = L.marker(e.latlng).addTo(map)
+        .bindPopup("بداية").openPopup();
+      markers.push(marker);
+      points.push(e.latlng);
+      return;
+    }
+
+    if (points.length === 1) {
+      const marker = L.marker(e.latlng).addTo(map)
+        .bindPopup("نهاية").openPopup();
+      markers.push(marker);
+      points.push(e.latlng);
+      getRoutes(points[0], points[1]);
+      return;
+    }
+
+    // If already have start and end: replace only the end point
+    if (points.length === 2) {
+      // Remove existing end marker
+      const endMarker = markers.pop();
+      if (endMarker) map.removeLayer(endMarker);
+
+      // Add new end marker and update points[1]
+      const newEndMarker = L.marker(e.latlng).addTo(map)
+        .bindPopup("نهاية").openPopup();
+      markers.push(newEndMarker);
+      points[1] = e.latlng;
+
+      // Clear previous routes and fetch again
+      routeLayers.forEach(layer => map.removeLayer(layer));
+      routeLayers = [];
+      getRoutes(points[0], points[1]);
+    }
+  });
+
+  async function getRoutes(start, end) {
+    // Remove old routes
+    routeLayers.forEach(layer => map.removeLayer(layer));
+    routeLayers = [];
+
+    const baseUrl = "https://router.project-osrm.org/route/v1/driving/";
+    const coords = `${start.lng},${start.lat};${end.lng},${end.lat}`;
+    const params = "?overview=full&geometries=geojson&alternatives=3";
+
+    try {
+      // Try multiple strategies to obtain up to three distinct routes
+      const requests = [
+        fetch(baseUrl + coords + params),
+        fetch(baseUrl + coords + params + "&exclude=motorway")
+      ];
+
+      const responses = await Promise.allSettled(requests);
+
+      let allRoutes = [];
+      for (const result of responses) {
+        if (result.status === 'fulfilled') {
+          const res = result.value;
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.routes)) {
+              allRoutes = allRoutes.concat(data.routes);
+            }
+          }
+        }
+      }
+
+      const uniqueSortedRoutes = dedupeAndSortRoutes(allRoutes).slice(0, 3);
+
+      if (uniqueSortedRoutes.length === 0) {
+        throw new Error("لم يتم العثور على مسارات");
+      }
+
+      displayRoutes(uniqueSortedRoutes);
+    } catch (err) {
+      console.error(err);
+      document.getElementById('route-info').innerHTML =
+        `<p style="color:red;">حدث خطأ: ${err.message}</p>`;
+    }
+  }
+
+  function dedupeAndSortRoutes(routes) {
+    const seen = new Set();
+    const unique = [];
+
+    for (const route of routes) {
+      const distKmRounded = Math.round((route.distance || 0) / 1000);
+      const timeMinRounded = Math.round((route.duration || 0) / 60);
+      const key = `${distKmRounded}-${timeMinRounded}`;
+
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(route);
+      }
+    }
+
+    unique.sort((a, b) => (a.duration || 0) - (b.duration || 0));
+    return unique;
+  }
+
+  function displayRoutes(routes) {
+    const colors = ['blue', 'green', 'red'];
+    const infoDiv = document.getElementById('route-info');
+    infoDiv.innerHTML = "";
+
+    routes.slice(0, 3).forEach((route, idx) => {
+      const layer = L.geoJSON(route.geometry, {
+        style: { color: colors[idx % colors.length], weight: 4, opacity: 0.8 }
+      }).addTo(map);
+      routeLayers.push(layer);
+
+      const distKm = (route.distance / 1000).toFixed(2);
+      const timeMin = Math.round(route.duration / 60);
+
+      infoDiv.innerHTML += `
+        <div class="route">
+          <b>${idx === 0 ? "أسرع مسار" : `بديل ${idx}`}</b><br>
+          الزمن: ${timeMin} دقيقة<br>
+          المسافة: ${distKm} كم
+        </div>
+      `;
+    });
+
+    const group = L.featureGroup(routeLayers);
+    map.fitBounds(group.getBounds(), { padding: [20, 20] });
+  }
+
+  function clearSelection() {
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+
+    routeLayers.forEach(layer => map.removeLayer(layer));
+    routeLayers = [];
+
+    points = [];
+
+    const infoDiv = document.getElementById('route-info');
+    if (infoDiv) {
+      infoDiv.innerHTML = 'اختر نقطتين على الخريطة لعرض المسارات.';
+    }
+  }
+
+  const clearBtn = document.getElementById('clear-btn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', clearSelection);
+  }
+
+  const basemapToggleBtn = document.getElementById('basemap-toggle-btn');
+  if (basemapToggleBtn) {
+    basemapToggleBtn.addEventListener('click', () => {
+      if (isSatellite) {
+        map.removeLayer(satelliteLayer);
+        streetLayer.addTo(map);
+        basemapToggleBtn.textContent = 'عرض فضائي';
+      } else {
+        map.removeLayer(streetLayer);
+        satelliteLayer.addTo(map);
+        basemapToggleBtn.textContent = 'عرض الشوارع';
+      }
+      isSatellite = !isSatellite;
+    });
+  }
+
+  // Theme toggle with persistence (classic icons: ☾ for light, ☼ for dark)
+  const themeToggleBtn = document.getElementById('theme-toggle-btn');
+  const storedTheme = localStorage.getItem('theme');
+  if (storedTheme === 'dark') {
+    document.documentElement.classList.add('dark');
+    if (themeToggleBtn) themeToggleBtn.textContent = '☼';
+  } else {
+    if (themeToggleBtn) themeToggleBtn.textContent = '☾';
+  }
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      const root = document.documentElement;
+      const isDark = root.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      themeToggleBtn.textContent = isDark ? '☼' : '☾';
+    });
+  }
+
+  // Mobile sidebar toggle (map control only on small screens)
+  const sidebar = document.getElementById('sidebar');
+  let sidebarToggleControlInstance = null;
+
+  function ensureSidebarVisibilityByViewport() {
+    if (window.matchMedia('(max-width: 1024px)').matches) {
+      // small: hidden by default
+      sidebar.classList.remove('hidden');
+      sidebar.classList.remove('show');
+      addSidebarToggleControl();
+    } else {
+      // desktop: always visible
+      sidebar.classList.add('show');
+      removeSidebarToggleControl();
+    }
+  }
+
+  function addSidebarToggleControl() {
+    if (sidebarToggleControlInstance) return;
+    const SidebarToggleControl = L.Control.extend({
+      onAdd: function () {
+        const container = L.DomUtil.create('div', 'leaflet-bar');
+        const link = L.DomUtil.create('a', '', container);
+        link.href = '#';
+        link.title = 'عرض/إخفاء القائمة';
+        link.innerHTML = '☰';
+        L.DomEvent.on(link, 'click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          L.DomEvent.preventDefault(e);
+          sidebar.classList.toggle('show');
+        });
+        L.DomEvent.disableClickPropagation(container);
+        return container;
+      },
+      onRemove: function () {}
+    });
+    sidebarToggleControlInstance = new SidebarToggleControl({ position: 'topright' });
+    sidebarToggleControlInstance.addTo(map);
+  }
+
+  function removeSidebarToggleControl() {
+    if (!sidebarToggleControlInstance) return;
+    map.removeControl(sidebarToggleControlInstance);
+    sidebarToggleControlInstance = null;
+  }
+
+  ensureSidebarVisibilityByViewport();
+  window.addEventListener('resize', ensureSidebarVisibilityByViewport);
+
+  // Close sidebar button (small screens)
+  const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+  if (sidebarCloseBtn && sidebar) {
+    sidebarCloseBtn.addEventListener('click', () => {
+      if (window.matchMedia('(max-width: 1024px)').matches) {
+        sidebar.classList.remove('show');
+      }
+    });
+  }
+  </script>
+</body>
+</html>
