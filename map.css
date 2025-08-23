@@ -1,0 +1,383 @@
+/* Base theme variables (light by default) */
+:root {
+  --bg: #ffffff;
+  --bg-elev: #f2f3f5;
+  --text: #0f1419; /* X-like primary text */
+  --text-muted: #536471; /* X muted */
+  --border: #e1e8ed;
+  --accent: #1d9bf0; /* X blue */
+  --accent-weak: rgba(29, 155, 240, 0.1);
+  --btn-bg: #eff3f4;
+  --btn-text: #0f1419;
+  --route-blue: #0074d9;
+  --route-green: #2ecc40;
+  --route-red: #ff4136;
+}
+
+:root.dark {
+  --bg: #1e1e1e;
+  --bg-elev: #16181c;
+  --text: #e7e9ea;
+  --text-muted: #8b98a5;
+  --border: #2f3336;
+  --accent: #1d9bf0;
+  --accent-weak: rgba(29, 155, 240, 0.15);
+  --btn-bg: #1d1f23;
+  --btn-text: #e7e9ea;
+  --route-blue: #0074d9;
+  --route-green: #2ecc40;
+  --route-red: #ff4136;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  font-family: 'Tajawal', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#map {
+  height: calc(100% - 60px); /* Account for bottom bar */
+  width: calc(100% - 260px);
+  float: left; /* map on left in RTL layout */
+}
+
+#sidebar {
+  width: 260px;
+  height: 100%;
+  float: right;
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+  padding: 12px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  position: relative;
+}
+
+#sidebar .close-btn {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  #sidebar {
+    display: none;
+  } /* Hide sidebar on mobile */
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.icon-btn {
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.icon-btn:hover {
+  background: var(--accent-weak);
+  border-color: var(--accent);
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: column; /* stack actions as column */
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+button {
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+button:hover {
+  background: var(--accent-weak);
+  border-color: var(--accent);
+}
+
+.route {
+  margin-bottom: 10px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+
+/* route color hints */
+.route:nth-child(1) {
+  background-color: var(--route-blue);
+}
+.route:nth-child(2) {
+  background-color: var(--route-green);
+}
+.route:nth-child(3) {
+  background-color: var(--route-red);
+}
+
+/* Leaflet tweaks to match theme */
+.leaflet-control-attribution {
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+/* Remove floating button class (no longer used) */
+.floating {
+  display: none !important;
+}
+
+/* Classic location button for large screens */
+.classic-location-btn {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.classic-location-btn:hover {
+  background: var(--accent-weak);
+  border-color: var(--accent);
+}
+
+/* Bottom bar for mobile devices */
+#bottom-bar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  z-index: 1000;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+#bottom-bar .actions {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 10px;
+}
+
+#bottom-bar .actions button {
+  flex: 1;
+  margin: 0 5px;
+  padding: 8px 12px;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+#bottom-bar .route-info {
+  padding: 10px;
+  border-top: 1px solid var(--border);
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+#bottom-bar .route {
+  margin-bottom: 8px;
+  padding: 6px;
+  font-size: 12px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  #map {
+    width: 100%;
+    float: none;
+    height: calc(100% - 60px); /* Account for bottom bar */
+  }
+
+  #sidebar {
+    display: none; /* Hide sidebar on mobile */
+  }
+
+  #bottom-bar {
+    display: block;
+  }
+
+  .classic-location-btn {
+    display: none; /* Hide classic button on mobile */
+  }
+}
+
+@media (min-width: 1025px) {
+  #map {
+    float: left;
+    height: 100%;
+  }
+  #sidebar {
+    position: static;
+    transform: none; /* always visible */
+    box-shadow: none;
+    z-index: auto;
+    display: block;
+  }
+
+  #bottom-bar {
+    display: none !important;
+  }
+
+  .classic-location-btn {
+    display: flex; /* Show classic button on desktop */
+  }
+}
+#map-logo {
+  position: absolute;
+  top: 10px;
+  right: 280px;
+  z-index: 1000;
+  background-color: rgba(255, 255, 255, 0.473);
+  border: 1px solid rgba(31, 29, 29, 0.623);
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+#map-logo img {
+  height: 80px;
+  width: auto;
+  display: block;
+}
+
+#user-profile,
+#mobile-user-profile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: flex-start;
+  text-align: center;
+  margin-bottom: 12px;
+}
+#user-profile img,
+#mobile-user-profile img {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+  align-self: center;
+}
+/* Modal */
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  justify-content: center;
+  align-items: center;
+  z-index: 9999; /* above everything */
+}
+
+.modal.is-open {
+  display: flex;
+}
+
+.modal-content {
+  position: relative;
+  background: var(--bg);
+  color: var(--text);
+  padding: 50px;
+  border-radius: 14px;
+  width: min(92vw, 360px);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.modal .form input {
+  width: 100%;
+  margin: 8px 0;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+}
+
+.close {
+  position: absolute;
+  top: 8px;
+  inset-inline-start: 8px; /* RTL close in left */
+  font-size: 20px;
+  line-height: 1;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+@media (max-width: 1024px) {
+  #map-logo {
+    top: 10px;
+    right: 5px;
+  }
+
+  #map-logo img {
+    height: 60px;
+  }
+  #mobile-user-profile {
+    align-items: center;
+    flex-direction: row;
+  }
+}
+.modal .form input[type='file'] {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.15s ease;
+}
+
+.modal .form input[type='file']:hover {
+  background: rgba(74, 144, 226, 0.1);
+  transform: translateY(-1px);
+}
+
+.modal .form input[type='file']::file-selector-button {
+  background: linear-gradient(135deg, #4a90e2, #275786);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  margin-right: 10px;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.15s ease;
+}
+
+.modal .form input[type='file']::file-selector-button:hover {
+  background: linear-gradient(135deg, #5aa0f2, #468bcd);
+  transform: translateY(-1px);
+}
